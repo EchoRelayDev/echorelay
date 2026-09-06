@@ -13,12 +13,15 @@ stays the single place to start:
 | Python | [echorelay-python](https://github.com/EchoRelayDev/echorelay-python) | PyPI, `echorelay` |
 | PHP | [echorelay-php](https://github.com/EchoRelayDev/echorelay-php) | Packagist, `echorelay/sdk` |
 
+The examples do not need any of them — they call the service over HTTP, and each
+library installs from its own registry — so a plain clone is enough:
+
 ```bash
-git clone --recurse-submodules https://github.com/EchoRelayDev/echorelay.git
+git clone https://github.com/EchoRelayDev/echorelay.git
 ```
 
-You do not need the submodules to run the examples — they call the service over
-HTTP, and each library installs from its own registry.
+Add `--recurse-submodules` only if you want the client sources checked out here
+rather than read in their own repositories.
 
 ## The clients are ports of one another
 
