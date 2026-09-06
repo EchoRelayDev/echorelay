@@ -1,0 +1,9 @@
+[submodule "sdk/php"]
+	path = sdk/php
+	url = https://github.com/EchoRelayDev/echorelay-php.git
+[submodule "sdk/python"]
+	path = sdk/python
+	url = https://github.com/EchoRelayDev/echorelay-python.git
+[submodule "sdk/typescript"]
+	path = sdk/typescript
+	url = https://github.com/EchoRelayDev/echorelay-typescript.git

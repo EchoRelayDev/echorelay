@@ -4,11 +4,21 @@ One thin client per language, for the data path only:
 `{baseUrl}/{line}/{endpoint}`. Managing a project — lines, endpoints, keys,
 receipts — is the management API, whose document is `examples/openapi/`.
 
-| Directory | Registry |
-|---|---|
-| `typescript/` | npm, `@echorelay/sdk` |
-| `python/` | PyPI, `echorelay` |
-| `php/` | Packagist, `echorelay/sdk` |
+Each client is its own repository, checked out here as a submodule so this one
+stays the single place to start:
+
+| Library | Repository | Registry |
+|---|---|---|
+| TypeScript | [echorelay-typescript](https://github.com/EchoRelayDev/echorelay-typescript) | npm, `@echorelay/sdk` |
+| Python | [echorelay-python](https://github.com/EchoRelayDev/echorelay-python) | PyPI, `echorelay` |
+| PHP | [echorelay-php](https://github.com/EchoRelayDev/echorelay-php) | Packagist, `echorelay/sdk` |
+
+```bash
+git clone --recurse-submodules https://github.com/EchoRelayDev/echorelay.git
+```
+
+You do not need the submodules to run the examples — they call the service over
+HTTP, and each library installs from its own registry.
 
 ## The clients are ports of one another
 
