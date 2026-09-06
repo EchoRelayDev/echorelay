@@ -1,0 +1,46 @@
+{
+    "name": "echorelay/sdk",
+    "description": "Lightweight PHP client for the EchoRelay data path.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "echorelay",
+        "webhook",
+        "relay",
+        "psr-18"
+    ],
+    "require": {
+        "php": "^8.2",
+        "psr/http-client": "^1.0",
+        "psr/http-factory": "^1.0",
+        "psr/http-message": "^1.1 || ^2.0",
+        "php-http/discovery": "^1.19"
+    },
+    "require-dev": {
+        "guzzlehttp/guzzle": "^8.0",
+        "nyholm/psr7": "^1.8",
+        "phpunit/phpunit": "^11.0",
+        "symfony/http-client": "^6.4 || ^7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "EchoRelay\\Sdk\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "EchoRelay\\Sdk\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true
+        },
+        "platform": {
+            "php": "8.2.0"
+        },
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

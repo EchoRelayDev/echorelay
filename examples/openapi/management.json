@@ -1,0 +1,1503 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "EchoRelay Management API",
+        "description": "Token-authenticated JSON API for AI agents and programmatic clients.\nEvery route is implicitly scoped to the project the request's API token\nwas minted for; a client only ever sees the single project its token\nwas minted for.\n",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "https://api.echorelay.dev",
+            "description": "Production"
+        }
+    ],
+    "paths": {
+        "/openapi/management.json": {
+            "get": {
+                "summary": "OpenAPI 3.x description of the **management API itself** — the\ntoken-gated REST surface (`/projects`, `/lines`, `/keys`, `/billing`,\n`/dlq`, …). It is generated from the routes it describes, so it cannot\nfall behind them.",
+                "description": "Not the same document as `/openapi.json`, which exports one project's own\nrelay specification; this one describes the management routes themselves\nand is not project-specific. Any valid management token, account- or\nproject-scoped, may read it — the same credential the API it describes\nrequires.",
+                "operationId": "get_api_openapi_management",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/projects": {
+            "get": {
+                "summary": "List the authenticated user's projects (account-scoped, `read` scope).",
+                "description": "Returns every project the user owns, archived included, with an\n`archived` flag. Mirrors the slug/name/url shape an agent then passes to\nthe project-scoped routes (with a project-scoped token).",
+                "operationId": "get_api_projects_list",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a project for the authenticated user (account-scoped, `config`\nscope). Body: `{name}`. The slug is derived + validated server-side\n(format / reserved words / uniqueness). The project serves traffic as\nsoon as the call returns. 201 on success; 422 with an actionable message\nwhen the account is at its plan's active-project cap — archive a project\nor upgrade.",
+                "operationId": "post_api_projects_create",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/projects/{slug}": {
+            "patch": {
+                "summary": "Rename a project the user owns (account-scoped, `config` scope). Body:\n`{name}`. Slug is never touched. 404 when the user does not own the slug.",
+                "operationId": "patch_api_projects_rename",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[a-z0-9-]+"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/projects/{slug}/archive": {
+            "post": {
+                "summary": "Archive a project the user owns (account-scoped, `config` scope).",
+                "description": "Reversible: the project and its slug persist and its credits are kept,\nbut it stops serving — callers of its address get 404 until it is\nun-archived. Idempotent. 404 when the user does not own the slug; 409\nwhen the project has archive protection enabled — lifting that is a\nsupport action, not something this token can do.",
+                "operationId": "post_api_projects_archive",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[a-z0-9-]+"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/projects/{slug}/protect": {
+            "post": {
+                "summary": "Turn on archive protection for a project the user owns (account-scoped,\n`config` scope). Idempotent and set-once: no route lifts it again and no\ntoken can, so removing it is a support action.",
+                "operationId": "post_api_projects_protect",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[a-z0-9-]+"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/projects/{slug}/unarchive": {
+            "post": {
+                "summary": "Un-archive a project the user owns (account-scoped, `config` scope).",
+                "description": "It serves traffic again as soon as the call returns. Idempotent for an\nalready-active project. 404 when the user does not own the slug; 409 when\nrestoring would exceed the plan's active-project cap — archive another or\nupgrade.",
+                "operationId": "post_api_projects_unarchive",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[a-z0-9-]+"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/billing": {
+            "get": {
+                "summary": "The project's billing state: which ledger it settles on (`prepaid` or\n`invoiceable`),\ncredit balances (paid + testing), current tier, effective live RPM\n(add-ons included), free-tier decay countdown, remaining allowance vs\nprepaid pools, and the plan's overage rate.",
+                "description": "An empty balance does not mean the project cannot send: an Enterprise\naccount's credit fields are empty by design, live traffic is never\nrefused for an exhausted balance, and a free-tier project is exempt from\nlive credit billing outright. Only the testing pool refuses when spent.",
+                "operationId": "get_api_billing",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/billing/plans": {
+            "get": {
+                "summary": "Catalog: the available subscription plans (Free, Pro, Scale).",
+                "operationId": "get_api_billing_plans",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/billing/credit-packs": {
+            "get": {
+                "summary": "Catalog: the prepaid credit packs available for top-up.",
+                "operationId": "get_api_billing_credit_packs",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/billing/addons": {
+            "get": {
+                "summary": "Catalog: monthly add-on subscriptions (RPM upgrades, extended retention, …).",
+                "operationId": "get_api_billing_addons",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "summary": "Owner-only; requires a token minted with the billing scope. Subscribe to\na monthly add-on that renews until cancelled — or until the subscription\nends, after which the already-paid cycle stays active to its own end date\nand stops without further charges. Requires an active\nPro/Scale subscription and a saved payment method.",
+                "description": "Body: `{addonKey, project?}` — `project` (a slug the owner owns) is\nrequired for per-project add-ons (`rpm_*`).\nReturns `{addonKey, project, monthlyEurCents, transactionId, activatedAt, nextRenewalAt}`.",
+                "operationId": "post_api_billing_addons_subscribe",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/billing/subscription": {
+            "get": {
+                "summary": "Owner-only; requires a token minted with the billing scope. The current subscription.",
+                "operationId": "get_api_billing_subscription_get",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "summary": "Owner-only; requires a token minted with the billing scope. Start a new\nPro/Scale subscription. Returns a hosted-checkout URL.",
+                "description": "Body: `{plan: \"pro\"|\"scale\"}`.",
+                "operationId": "post_api_billing_subscription_start",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Owner-only; requires a token minted with the billing scope. Schedule cancellation at period end. Returns `{kind: scheduled, …}`.",
+                "operationId": "delete_api_billing_subscription_cancel",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Owner-only; requires a token minted with the billing scope. Change the\ncurrent plan (Pro ↔ Scale or downgrade to Free).",
+                "description": "Body: `{plan: \"pro\"|\"scale\"|\"free\"}`.",
+                "operationId": "patch_api_billing_subscription_change",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/billing/subscription/preview": {
+            "post": {
+                "summary": "Owner-only; requires a token minted with the billing scope. Preview the\ndollar impact of a future change_plan call.",
+                "description": "Body: `{plan: \"pro\"|\"scale\"|\"free\"}`.",
+                "operationId": "post_api_billing_subscription_preview",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/billing/addons/active": {
+            "get": {
+                "summary": "Owner-only; requires a token minted with the billing scope. List active add-ons for the project owner.",
+                "operationId": "get_api_billing_addons_active",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/billing/addons/{addonKey}": {
+            "delete": {
+                "summary": "Owner-only; requires a token minted with the billing scope. Cancel an\nactive add-on. Stops future charges; the current cycle stays active\nuntil expiry. Per-project add-ons (`rpm_*`) require the project slug\nin `?project=`.",
+                "operationId": "delete_api_billing_addons_unsubscribe",
+                "parameters": [
+                    {
+                        "name": "addonKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[a-z0-9_]+"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/billing/addons/{addonKey}/resume": {
+            "post": {
+                "summary": "Resume (un-cancel) a pending-cancel add-on. Query param `project` selects the\nproject for per-project RPM tiers. Returns `{addonKey, project, nextRenewalAt, resumed}`.",
+                "operationId": "post_api_billing_addons_resume",
+                "parameters": [
+                    {
+                        "name": "addonKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[a-z0-9_]+"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/billing/addons/{addonKey}/downgrade": {
+            "post": {
+                "summary": "Schedule a tier downgrade for a non-stackable add-on (e.g. RPM tiers). The\ncurrent tier stays active until the next renewal, at which point the lower tier\nis charged and activated. Body: `{targetAddonKey, project?}`. Returns\n`{addonKey, targetAddonKey, project, effectiveAt}`.",
+                "operationId": "post_api_billing_addons_downgrade",
+                "parameters": [
+                    {
+                        "name": "addonKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[a-z0-9_]+"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/billing/topup": {
+            "post": {
+                "summary": "Owner-only; requires a token minted with the billing scope. Start a\ncredit-pack top-up. Returns `{checkoutUrl, credits, eurCents}`.",
+                "description": "Body: `{eurCents: <pack's eurCents from /billing/credit-packs>}`.",
+                "operationId": "post_api_billing_topup",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/endpoints": {
+            "get": {
+                "summary": "Endpoints under one line. 404 when the line key is unknown to this project.",
+                "operationId": "get_api_line_endpoints",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "summary": "Creates an endpoint under a line. Body: the endpoint JSON document.",
+                "operationId": "post_api_endpoints_create",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/endpoints/{id}": {
+            "get": {
+                "summary": "The full JSON of one endpoint.",
+                "operationId": "get_api_endpoint",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Deletes an endpoint and its targets.",
+                "operationId": "delete_api_endpoints_delete",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Updates an endpoint. Body: a partial endpoint JSON document (PATCH merge).",
+                "operationId": "patch_api_endpoints_update",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/generated-endpoint": {
+            "post": {
+                "summary": "Generates a draft endpoint under a line from a sample inbound request\nand a description of the target. Body: `sample`,\n`deliveryMode`, `draftRevision`, plus either `targetDocument` (an\nOpenAPI 3.x document naming exactly one operation) and optionally\n`targetFilename`, or `targetSample` with `targetUrl` (and optionally\n`targetHttpMethod`). Always writes a draft, never publishes — publish it\nthrough the line draft routes once reviewed.",
+                "operationId": "post_api_endpoints_generate",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/import": {
+            "get": {
+                "summary": "OpenAPI / Swagger spec import is a web-only capability: the panel's\nupload-and-preview wizard needs a human in a browser (CSRF + session),\nso there is no machine import\npath. Rather than let a programmatic client hit a bare 404, this route\nanswers with an explicit `web_only` error that names the panel and points\nat the per-endpoint create route — the surface documents its own\nexclusion instead of leaving a silent gap.",
+                "operationId": "get_api_line_import",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "summary": "OpenAPI / Swagger spec import is a web-only capability: the panel's\nupload-and-preview wizard needs a human in a browser (CSRF + session),\nso there is no machine import\npath. Rather than let a programmatic client hit a bare 404, this route\nanswers with an explicit `web_only` error that names the panel and points\nat the per-endpoint create route — the surface documents its own\nexclusion instead of leaving a silent gap.",
+                "operationId": "post_api_line_import",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/endpoint-template": {
+            "get": {
+                "summary": "Returns a canonical minimal-valid endpoint JSON for a fresh line —\nagents can POST it verbatim to the create route and get an\nimmediately-working mock endpoint.",
+                "operationId": "get_api_endpoint_template",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/endpoints/dry-run": {
+            "post": {
+                "summary": "Validate an endpoint document without writing it. Pass `id` in the\nURL to dry-run a PATCH against an existing endpoint; omit it to\ndry-run a create. Returns {ok: true, resolved} or {ok: false, errors}.",
+                "description": "A `sample` in the body also evaluates every target's `outgoingMapping`\nagainst it, and `answerSample` does the same for `answerMapping`,\nattaching what each produced, which node produced each field, and every\nrule that failed with the value that broke it. The payload never reaches\na vendor — it is handed to the mapping service, evaluated, and discarded.",
+                "operationId": "post_api_endpoints_dry_run",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/endpoints/{id}/dry-run": {
+            "post": {
+                "operationId": "post_api_endpoint_dry_run",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/keys": {
+            "get": {
+                "summary": "Lists the project's API keys (metadata only — never the plaintext).",
+                "operationId": "get_api_keys_list",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "summary": "Mints a new key. Body: {name, mode, ttlDays?}. Returns the one-shot plaintext.",
+                "operationId": "post_api_keys_create",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/keys/{id}/rotate": {
+            "post": {
+                "summary": "Manually mints a successor and links it. Returns the successor's plaintext.",
+                "operationId": "post_api_keys_rotate",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/keys/{id}/reveal-successor": {
+            "post": {
+                "summary": "One-shot plaintext retrieval for an auto-minted successor. Returns 410\nwhen the secret has already been revealed (or was never stored, e.g.",
+                "description": "a manually-rotated key) — the plaintext is genuinely unrecoverable.",
+                "operationId": "post_api_keys_reveal_successor",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/keys/{id}": {
+            "delete": {
+                "summary": "Hard revoke. 204 on success. Idempotent.",
+                "operationId": "delete_api_keys_revoke",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/key-policy": {
+            "get": {
+                "summary": "Returns the project's key policy.",
+                "operationId": "get_api_key_policy_get",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "summary": "Owner-only: edits the project's key policy. Only fields present in the body are updated.",
+                "operationId": "put_api_key_policy_update",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines": {
+            "get": {
+                "summary": "The project's versioned API lines, with endpoint counts.",
+                "operationId": "get_api_lines",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "summary": "Creates a line. Body: {name, lineKey}.",
+                "operationId": "post_api_lines_create",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/config": {
+            "get": {
+                "summary": "The project's full relay configuration, as the relay itself reads it.",
+                "operationId": "get_api_config",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/config/diff": {
+            "get": {
+                "summary": "The change-gate preview: a structured diff between what a publish would\nsend right now (the frozen pending schedule if one exists, otherwise the\nlive draft) and the currently-published config.",
+                "operationId": "get_api_config_diff",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/config/schedule": {
+            "post": {
+                "summary": "Deprecated: project-wide scheduling is retired. Always 410; use the per-line draft schedule route.",
+                "operationId": "post_api_config_schedule",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Deprecated: project-wide scheduling is retired. Always 410; use the per-line draft schedule route.",
+                "operationId": "delete_api_config_schedule_cancel",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/config/revisions/{lineKey}": {
+            "get": {
+                "summary": "Historical line revisions available for immediate rollback.",
+                "operationId": "get_api_config_revisions",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/config/rollback": {
+            "post": {
+                "summary": "Publish a retained line revision now; any pending schedule is cleared.",
+                "operationId": "post_api_config_rollback",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/draft": {
+            "get": {
+                "operationId": "get_api_line_draft_get",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "put_api_line_draft_replace",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "delete_api_line_draft_discard",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/draft/preview": {
+            "get": {
+                "operationId": "get_api_line_draft_preview",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/draft/endpoints/{id}": {
+            "delete": {
+                "operationId": "delete_api_line_draft_endpoint_discard",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/draft/publish": {
+            "post": {
+                "operationId": "post_api_line_draft_publish",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/draft/schedule": {
+            "post": {
+                "operationId": "post_api_line_draft_schedule",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "delete_api_line_draft_schedule_cancel",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "patch_api_line_draft_schedule",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}": {
+            "delete": {
+                "summary": "Deletes a line and everything under it.",
+                "operationId": "delete_api_lines_delete",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/activate": {
+            "post": {
+                "summary": "Activate an inactive line so it serves traffic again. 409 when\nthe project is at its active-line cap — deactivate another first.",
+                "operationId": "post_api_lines_activate",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/deactivate": {
+            "post": {
+                "summary": "Stop a line serving, without deleting it — callers get 404. Idempotent.",
+                "operationId": "post_api_lines_deactivate",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/duplicate": {
+            "post": {
+                "summary": "Deep-copy a line and its endpoints/targets into a new line key — build\nv2 from v1. The copy is saved inactive and does not serve until it is\nactivated. Body:\n`{newLineKey, name?}`.",
+                "operationId": "post_api_lines_duplicate",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/lines/{lineKey}/docs-shared": {
+            "post": {
+                "summary": "Set the line's public-docs flag. When enabled the line's\nOpenAPI spec is published at `docs.{baseDomain}/{slug}/{lineKey}`.",
+                "description": "Body: `{enabled: bool}`.",
+                "operationId": "post_api_lines_docs_shared",
+                "parameters": [
+                    {
+                        "name": "lineKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/requests": {
+            "get": {
+                "summary": "Paginated request log. Mirrors the panel page and the\n`list_requests` MCP tool. Accepts `status`, `method`, `path`, `since`,\n`until`, `targetOutcome`, `limit`, `offset` as query args.",
+                "operationId": "get_api_requests_list",
+                "responses": {
+                    "200": {
+                        "description": "Paginated request rows.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "rows": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "configVersion": {
+                                                        "description": "Published config that authorised the request; 0 means unstamped.",
+                                                        "type": "integer",
+                                                        "minimum": 0
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/requests/{requestId}": {
+            "get": {
+                "summary": "Single request envelope + every per-target attempt, scoped to the\ntoken's project. Returns 404 once the request has aged out of the\nproject's log-retention window.",
+                "operationId": "get_api_requests_show",
+                "parameters": [
+                    {
+                        "name": "requestId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[0-9a-fA-F-]{36}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "One request and its per-target delivery attempts.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "request": {
+                                            "properties": {
+                                                "configVersion": {
+                                                    "description": "Published config that authorised the request; 0 means unstamped.",
+                                                    "type": "integer",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "attempts": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "configVersion": {
+                                                        "description": "Published config that authorised the delivery attempt; 0 means unstamped.",
+                                                        "type": "integer",
+                                                        "minimum": 0
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/requests/{requestId}/receipts": {
+            "get": {
+                "summary": "Every target this request fanned out to, each carrying its delivery\nreceipt or the reason it has none. A delivery still in flight answers\nthe same shape as a settled one. A sync/stream target carries\n`reason: \"sync_or_stream_delivery\"` instead, since it completes inside\nthe caller's own HTTP response and never gets one. Mirrors the\n`get_receipts` MCP tool.",
+                "operationId": "get_api_requests_receipts",
+                "parameters": [
+                    {
+                        "name": "requestId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[0-9a-fA-F-]{36}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Delivery receipts for one request, one entry per fanned-out target.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "requestId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "receipts": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "available": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "reason": {
+                                                        "type": "string",
+                                                        "nullable": true,
+                                                        "enum": [
+                                                            "sync_or_stream_delivery",
+                                                            "not_found"
+                                                        ]
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/metrics": {
+            "get": {
+                "summary": "Aggregate activity metrics for the token's project. Mirrors the\n`get_metrics` MCP tool. Query arg `window` ∈ hour|day|week|month (default\nday); week/month require a paid plan and silently downgrade to day with\n`planGated: true` otherwise. Optional `targetId` (slice over one outbound\ntarget's per-attempt rows) or `endpointId` (one endpoint's inbound rows);\nat most one of the two.",
+                "operationId": "get_api_metrics",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/dlq": {
+            "get": {
+                "summary": "Paginated DLQ entries for this project, newest first. Mirrors\n`list_dlq` MCP tool. Query: `limit`, `offset`.",
+                "operationId": "get_api_dlq_list",
+                "responses": {
+                    "200": {
+                        "description": "Paginated dead-letter entries.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "rows": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "configVersion": {
+                                                        "description": "Published config that authorised the delivery; 0 means unstamped.",
+                                                        "type": "integer",
+                                                        "minimum": 0
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/dlq/by-request/{requestId}": {
+            "get": {
+                "summary": "Every currently retained DLQ row for one inbound request. One request can\nfan out to multiple targets and can have more than one retained row for\nthe same target, so `entries` is always a stream-row list.",
+                "operationId": "get_api_dlq_get_by_request",
+                "parameters": [
+                    {
+                        "name": "requestId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[0-9a-fA-F-]{36}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Every retained dead-letter entry for one request.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "requestId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "entries": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "description": "Dead-letter entry id, of the form `{ms}-{seq}`. Changes whenever the entry is replayed and dead-letters again; prefer `requestId` to follow one request across replays.",
+                                                        "type": "string"
+                                                    },
+                                                    "requestId": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "targetId": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/dlq/{id}": {
+            "get": {
+                "summary": "Single DLQ entry. 404 when no such stream id exists.",
+                "operationId": "get_api_dlq_get",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[0-9]+-[0-9]+"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "One dead-letter entry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "configVersion": {
+                                            "description": "Published config that authorised the delivery; 0 means unstamped.",
+                                            "type": "integer",
+                                            "minimum": 0
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Permanently delete a DLQ entry. Editor only.",
+                "operationId": "delete_api_dlq_discard",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[0-9]+-[0-9]+"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/dlq/{id}/retry": {
+            "post": {
+                "summary": "Re-enqueue a DLQ entry. 404 when already retried/discarded. Editor only.",
+                "operationId": "post_api_dlq_retry",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[0-9]+-[0-9]+"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/audit-events": {
+            "get": {
+                "summary": "Paginated audit-log read for this project, newest first. Mirrors\n`list_audit_events` MCP tool. Query: `action`, `entityType`, `entityId`,\n`since`, `until` (unix ms), `limit`, `offset`.",
+                "operationId": "get_api_audit_events_list",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/project": {
+            "get": {
+                "summary": "Project the token is scoped to: id, slug, name, caller-facing base URL, editAccess, scopes, burstOptIn, requestLogRetentionDays, auditRetentionDays.",
+                "operationId": "get_api_project",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/projects/{slug}/tokens": {
+            "get": {
+                "summary": "List a project's tokens, any holder (account-scoped, `read` scope).",
+                "description": "Metadata only — never a hash, never the plaintext.",
+                "operationId": "get_api_project_tokens_list",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[a-z0-9-]+"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "summary": "Mint a project-scoped token for a project the user owns (account-scoped,\n`config` scope). Body: `{label, scopes?, expiresInDays?}`.",
+                "description": "Attenuated by design: scopes are a subset of this token's own grant, the\nexpiry is mandatory and between 1 and 90 days, and a minted token can\nnever mint another. `spend` is never mintable here whatever the caller's\nown scopes — it is granted from the panel only. Returns the plaintext\nexactly once (201).",
+                "operationId": "post_api_project_tokens_create",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[a-z0-9-]+"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/projects/{slug}/tokens/{id}": {
+            "delete": {
+                "summary": "Revoke a project-scoped token on an owned project (account-scoped,\n`config` scope) — any holder's, the account-owner kill switch.",
+                "description": "Soft-revoke, idempotent; a token that is not THIS project's is a 404\n(doesn't confirm ids that exist elsewhere).",
+                "operationId": "delete_api_project_tokens_revoke",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[a-z0-9-]+"
+                        }
+                    },
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "Bearer": {
+                "type": "http",
+                "bearerFormat": "er_mcp_...",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "security": [
+        {
+            "Bearer": []
+        }
+    ]
+}

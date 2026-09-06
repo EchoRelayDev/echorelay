@@ -1,0 +1,135 @@
+[
+  {
+    "name": "resend-sync",
+    "url": "/resend-sync",
+    "httpMethod": "POST",
+    "targets": [
+      {
+        "name": "resend-inline",
+        "targetUrl": "https://api.resend.com/emails",
+        "auth": {
+          "type": "bearer",
+          "token": "RESEND_API_KEY_PLACEHOLDER"
+        },
+        "deliveryMode": "sync",
+        "syncTimeout": 15,
+        "outgoingMapping": {
+          "$schema": "https://schemas.echorelay.dev/transform/mapping/v1.json",
+          "root": {
+            "type": "object",
+            "id": "resend-body",
+            "properties": {
+              "from": {
+                "type": "constant",
+                "id": "from",
+                "value": "RESEND_FROM_PLACEHOLDER"
+              },
+              "to": {
+                "type": "split",
+                "id": "to",
+                "separator": ",",
+                "maxParts": 10,
+                "input": {
+                  "type": "field",
+                  "id": "recipients",
+                  "path": "recipients"
+                }
+              },
+              "subject": {
+                "type": "field",
+                "id": "subject",
+                "path": "title"
+              },
+              "text": {
+                "type": "field",
+                "id": "text",
+                "path": "note"
+              }
+            }
+          }
+        },
+        "answerMapping": {
+          "$schema": "https://schemas.echorelay.dev/transform/mapping/v1.json",
+          "root": {
+            "type": "object",
+            "id": "caller-reply",
+            "properties": {
+              "messageId": {
+                "type": "field",
+                "id": "vendor-id",
+                "path": "id"
+              },
+              "accepted": {
+                "type": "constant",
+                "id": "accepted",
+                "value": true
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "resend-async",
+    "url": "/resend-async",
+    "httpMethod": "POST",
+    "targets": [
+      {
+        "name": "resend-queued",
+        "targetUrl": "https://api.resend.com/emails",
+        "auth": {
+          "type": "bearer",
+          "token": "RESEND_API_KEY_PLACEHOLDER"
+        },
+        "deliveryMode": "async",
+        "retryPolicy": {
+          "maxAttempts": 1,
+          "backoffMultiplier": 2.0,
+          "retryOn": [
+            429,
+            500,
+            502,
+            503,
+            504
+          ]
+        },
+        "outgoingMapping": {
+          "$schema": "https://schemas.echorelay.dev/transform/mapping/v1.json",
+          "root": {
+            "type": "object",
+            "id": "resend-body",
+            "properties": {
+              "from": {
+                "type": "constant",
+                "id": "from",
+                "value": "RESEND_FROM_PLACEHOLDER"
+              },
+              "to": {
+                "type": "split",
+                "id": "to",
+                "separator": ",",
+                "maxParts": 10,
+                "input": {
+                  "type": "field",
+                  "id": "recipients",
+                  "path": "recipients"
+                }
+              },
+              "subject": {
+                "type": "field",
+                "id": "subject",
+                "path": "title"
+              },
+              "text": {
+                "type": "field",
+                "id": "text",
+                "path": "note"
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+]

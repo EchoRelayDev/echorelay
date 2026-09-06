@@ -1,0 +1,24 @@
+{
+  "name": "stream-passthrough",
+  "url": "/stream",
+  "httpMethod": "POST",
+  "targets": [
+    {
+      "name": "stream-target",
+      "targetUrl": "STREAM_TARGET_URL_PLACEHOLDER",
+      "auth": {
+        "type": "bearer",
+        "token": "STREAM_TARGET_API_KEY_PLACEHOLDER"
+      },
+      "deliveryMode": "stream",
+      "outgoingMapping": {
+        "$schema": "https://schemas.echorelay.dev/transform/mapping/v1.json",
+        "root": {
+          "type": "field",
+          "id": "root",
+          "path": ""
+        }
+      }
+    }
+  ]
+}
